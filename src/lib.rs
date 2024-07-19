@@ -28,7 +28,6 @@ impl Universe {
     pub fn new(height: u32, width: u32) -> Self {
         // make a error panic message more informative
         utils::set_panic_hook();
-        panic!("Test debugger!");
         Universe {
             width,
             height,

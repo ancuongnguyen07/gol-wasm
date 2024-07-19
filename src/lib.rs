@@ -19,6 +19,8 @@ pub struct Universe {
     height: u32,
     /// Size of cells is `width` * `height`
     cells: FixedBitSet,
+    /// Initial state of cells
+    init_states: FixedBitSet,
 }
 
 #[wasm_bindgen]
@@ -28,10 +30,14 @@ impl Universe {
     pub fn new(height: u32, width: u32) -> Self {
         // make a error panic message more informative
         utils::set_panic_hook();
+
+        let cells = FixedBitSet::with_capacity((width * height) as usize);
+        let init_states = cells.clone();
         Universe {
             width,
             height,
-            cells: FixedBitSet::with_capacity((width * height) as usize),
+            cells,
+            init_states,
         }
     }
 
@@ -44,11 +50,13 @@ impl Universe {
         for i in 0..size {
             cells.set(i, i % 2 == 0 || i % 7 == 0);
         }
+        let init_states = cells.clone();
 
         Universe {
             width,
             height,
             cells,
+            init_states,
         }
     }
 
@@ -62,11 +70,13 @@ impl Universe {
         for i in 0..size {
             cells.set(i, Math::random() >= 0.5);
         }
+        let init_states = cells.clone();
 
         Universe {
             width,
             height,
             cells,
+            init_states,
         }
     }
 
@@ -86,9 +96,15 @@ impl Universe {
         self.reset_cells();
     }
 
-    fn reset_cells(&mut self) {
+    /// Reset all cells to DEAD
+    pub fn reset_cells(&mut self) {
         let size = (self.width * self.height) as usize;
         self.cells.set_range(0..size, false);
+    }
+
+    /// Reset to the initial state
+    pub fn reset_init_state(&mut self) {
+        self.cells = self.init_states.clone();
     }
 
     fn get_index(&self, row: u32, column: u32) -> usize {
@@ -139,15 +155,15 @@ impl Universe {
                     },
                 );
 
-                if next[idx] != cell {
-                    log!(
-                        "cell at ({},{}) changes from {} to {}",
-                        row,
-                        col,
-                        cell,
-                        next[idx],
-                    );
-                }
+                // if next[idx] != cell {
+                //     log!(
+                //         "cell at ({},{}) changes from {} to {}",
+                //         row,
+                //         col,
+                //         cell,
+                //         next[idx],
+                //     );
+                // }
             }
         }
 
@@ -164,6 +180,15 @@ impl Universe {
 
     pub fn cells(&self) -> *const usize {
         self.cells.as_slice().as_ptr()
+    }
+
+    pub fn init_states(&self) -> *const usize {
+        self.init_states.as_slice().as_ptr()
+    }
+
+    pub fn toggle_cell(&mut self, row: u32, column: u32) {
+        let idx = self.get_index(row, column);
+        self.cells.toggle(idx);
     }
 }
 

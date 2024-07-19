@@ -1,12 +1,12 @@
 import { memory } from "wasm-game-of-life/wasm_game_of_life_bg.wasm";
-import { Universe, Cell } from "wasm-game-of-life";
+import { Universe } from "wasm-game-of-life";
 
 const CELL_SIZE = 5 // pixels
 const GRID_COLOR = "#CCCCCC";
 const DEAD_COLOR = "#FFFFFF";
 const ALIVE_COLOR = "#000000";
 
-const universe = Universe.new();
+const universe = Universe.new_randomized();
 const width = universe.width()
 const height = universe.height()
 
@@ -15,6 +15,12 @@ canvas.height = (CELL_SIZE + 1) * height + 1
 canvas.width = (CELL_SIZE + 1) * width + 1
 
 const ctx = canvas.getContext('2d')
+
+let frameId = null
+
+const tickSlider = document.getElementById("tick-slider")
+const resetButton = document.getElementById("reset-uni-button")
+const deadButton = document.getElementById("dead-uni-button")
 
 const drawGrid = () => {
     ctx.beginPath();
@@ -71,16 +77,76 @@ const drawCells = () => {
     ctx.stroke()
 }
 
-const renderLoop = () => {
-    universe.tick()
 
-    drawGrid();
-    drawCells();
-
-    requestAnimationFrame(renderLoop)
+const isPaused = () => {
+    return frameId === null
 }
 
-drawGrid()
-drawCells()
-requestAnimationFrame(renderLoop)
+const drawBoard = () => {
+    drawGrid()
+    drawCells()
+}
 
+const renderLoop = () => {
+    drawBoard()
+
+    const numOfTicks = parseInt(tickSlider.value, 10)
+    console.log(`num of ticks: ${numOfTicks}`)
+    for (let i = 0; i < numOfTicks; i++) {
+        universe.tick()
+    }
+
+    frameId = requestAnimationFrame(renderLoop)
+}
+
+const playPauseButton = document.getElementById("play-pause")
+
+const play = () => {
+    playPauseButton.textContent = "⏸"
+    renderLoop()
+}
+
+const pause = () => {
+    playPauseButton.textContent = "▶"
+    cancelAnimationFrame(frameId)
+    frameId = null;
+}
+
+playPauseButton.addEventListener("click", event => {
+    if (isPaused()) {
+        play()
+    } else {
+        pause()
+    }
+})
+
+canvas.addEventListener("click", event => {
+    const boundingRect = canvas.getBoundingClientRect()
+
+    const scaleX = canvas.width / boundingRect.width
+    const scaleY = canvas.height / boundingRect.height
+
+    const canvasLeft = (event.clientX - boundingRect.left) * scaleX
+    const canvasTop = (event.clientY - boundingRect.top) * scaleY
+
+    const row = Math.min(Math.floor(canvasTop / (CELL_SIZE + 1)), height - 1)
+    const col = Math.min(Math.floor(canvasLeft / (CELL_SIZE + 1)), width - 1)
+
+    universe.toggle_cell(row, col)
+
+    drawBoard()
+})
+
+resetButton.addEventListener("click", event => {
+    universe.reset_init_state()
+
+    drawBoard()
+})
+
+deadButton.addEventListener("click", event => {
+    universe.reset_cells()
+    drawBoard()
+})
+
+drawBoard()
+play()

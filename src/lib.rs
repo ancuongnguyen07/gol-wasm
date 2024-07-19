@@ -1,4 +1,7 @@
+#[macro_use]
 mod utils;
+
+use std::u32;
 
 use fixedbitset::FixedBitSet;
 use js_sys::Math;
@@ -20,6 +23,19 @@ pub struct Universe {
 
 #[wasm_bindgen]
 impl Universe {
+    /// Constructor for a new Universe with the given height and width.
+    /// All cells are uninitialized. Set cell values through `set_cells()`
+    pub fn new(height: u32, width: u32) -> Self {
+        // make a error panic message more informative
+        utils::set_panic_hook();
+        panic!("Test debugger!");
+        Universe {
+            width,
+            height,
+            cells: FixedBitSet::with_capacity((width * height) as usize),
+        }
+    }
+
     pub fn new_fixed() -> Self {
         let width = 64u32;
         let height = 64u32;
@@ -53,6 +69,27 @@ impl Universe {
             height,
             cells,
         }
+    }
+
+    /// Set the width of the universe.
+    ///
+    /// Resets all cells to the dead state.
+    pub fn set_width(&mut self, width: u32) {
+        self.width = width;
+        self.reset_cells();
+    }
+
+    /// Set the height of the universes.
+    ///
+    /// Resets all cells to the dead state.
+    pub fn set_height(&mut self, height: u32) {
+        self.height = height;
+        self.reset_cells();
+    }
+
+    fn reset_cells(&mut self) {
+        let size = (self.width * self.height) as usize;
+        self.cells.set_range(0..size, false);
     }
 
     fn get_index(&self, row: u32, column: u32) -> usize {
@@ -102,6 +139,16 @@ impl Universe {
                         (otherwise, _) => otherwise,
                     },
                 );
+
+                if next[idx] != cell {
+                    log!(
+                        "cell at ({},{}) changes from {} to {}",
+                        row,
+                        col,
+                        cell,
+                        next[idx],
+                    );
+                }
             }
         }
 
@@ -118,5 +165,21 @@ impl Universe {
 
     pub fn cells(&self) -> *const usize {
         self.cells.as_slice().as_ptr()
+    }
+}
+
+/// No WASM bindgen. No expose to JavaScript
+impl Universe {
+    pub fn get_cells(&self) -> &FixedBitSet {
+        &self.cells
+    }
+
+    /// Set cells to be alive in a universe by passing the row and column
+    /// of each cell as an array.
+    pub fn set_cells(&mut self, cells: &[(u32, u32)]) {
+        for (row, col) in cells.iter().cloned() {
+            let idx = self.get_index(row, col);
+            self.cells.set(idx, true);
+        }
     }
 }

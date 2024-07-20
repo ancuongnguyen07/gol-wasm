@@ -5,6 +5,7 @@ use std::u32;
 
 use fixedbitset::FixedBitSet;
 use js_sys::Math;
+use utils::Timer;
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -116,27 +117,53 @@ impl Universe {
     /// the modulo do its thing, rather than attempting to subtract 1. row and column can be 0,
     /// and if we attempted to subtract 1 from them, there would be an unsigned integer underflow.
     fn live_neighbor_count(&self, row: u32, column: u32) -> u8 {
-        let mut counter = 0u8;
-        for i in [self.height - 1, 0, 1].iter() {
-            for j in [self.width - 1, 0, 1].iter() {
-                let neighbor_row = (row + i) % self.height;
-                let neighbor_col = (column + j) % self.width;
-                let idx = self.get_index(neighbor_row, neighbor_col);
-                counter += match self.cells[idx] {
-                    true => 1,
-                    false => 0,
-                };
-            }
-        }
+        let mut count = 0;
 
-        if self.cells.contains(self.get_index(row, column)) {
-            counter -= 1;
-        }
+        let north = if row == 0 { self.height - 1 } else { row - 1 };
 
-        return counter;
+        let south = if row == self.height - 1 { 0 } else { row + 1 };
+
+        let west = if column == 0 {
+            self.width - 1
+        } else {
+            column - 1
+        };
+
+        let east = if column == self.width - 1 {
+            0
+        } else {
+            column + 1
+        };
+
+        let nw = self.get_index(north, west);
+        count += self.cells[nw] as u8;
+
+        let n = self.get_index(north, column);
+        count += self.cells[n] as u8;
+
+        let ne = self.get_index(north, east);
+        count += self.cells[ne] as u8;
+
+        let w = self.get_index(row, west);
+        count += self.cells[w] as u8;
+
+        let e = self.get_index(row, east);
+        count += self.cells[e] as u8;
+
+        let sw = self.get_index(south, west);
+        count += self.cells[sw] as u8;
+
+        let s = self.get_index(south, column);
+        count += self.cells[s] as u8;
+
+        let se = self.get_index(south, east);
+        count += self.cells[se] as u8;
+
+        count
     }
 
     pub fn tick(&mut self) {
+        let _timer = Timer::new("Universe::tick");
         let mut next = self.cells.clone();
 
         for row in 0..self.height {

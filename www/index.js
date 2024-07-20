@@ -57,13 +57,32 @@ const drawCells = () => {
 
     ctx.beginPath();
 
+    // Draw dead cells and alive cells in 2 separate loop in order to
+    // enhance the performance where `fillStyle` is the bottleneck
+    ctx.fillStyle = DEAD_COLOR
     for (let row = 0; row < height; row++) {
         for (let col = 0; col < width; col++) {
             const idx = getIndex(row, col)
+            if (isBitSet(idx, cells) !== true) {
+                continue
+            }
 
-            ctx.fillStyle = isBitSet(idx, cells)
-                ? DEAD_COLOR
-                : ALIVE_COLOR;
+            ctx.fillRect(
+                col * (CELL_SIZE + 1) + 1,
+                row * (CELL_SIZE + 1) + 1,
+                CELL_SIZE,
+                CELL_SIZE
+            );
+        }
+    }
+
+    ctx.fillStyle = ALIVE_COLOR
+    for (let row = 0; row < height; row++) {
+        for (let col = 0; col < width; col++) {
+            const idx = getIndex(row, col)
+            if (isBitSet(idx, cells) !== false) {
+                continue
+            }
 
             ctx.fillRect(
                 col * (CELL_SIZE + 1) + 1,
@@ -85,18 +104,6 @@ const isPaused = () => {
 const drawBoard = () => {
     drawGrid()
     drawCells()
-}
-
-const renderLoop = () => {
-    drawBoard()
-
-    const numOfTicks = parseInt(tickSlider.value, 10)
-    console.log(`num of ticks: ${numOfTicks}`)
-    for (let i = 0; i < numOfTicks; i++) {
-        universe.tick()
-    }
-
-    frameId = requestAnimationFrame(renderLoop)
 }
 
 const playPauseButton = document.getElementById("play-pause")
@@ -147,6 +154,59 @@ deadButton.addEventListener("click", event => {
     universe.reset_cells()
     drawBoard()
 })
+
+const fps = new class {
+    constructor() {
+        this.fps = document.getElementById("fps")
+        this.frames = []
+        this.lastFrameTimeStamp = performance.now()
+    }
+
+    render() {
+        const now = performance.now()
+        const delta = now - this.lastFrameTimeStamp
+        this.lastFrameTimeStamp = now
+        const fps = 1 / delta * 1000
+
+        this.frames.push(fps)
+        if (this.frames.length > 100) {
+            this.frames.shift()
+        }
+
+        let min = Infinity
+        let max = -Infinity
+        let sum = 0
+        for (let i = 0; i < this.frames.length; i++) {
+            sum += this.frames[i]
+            min = Math.min(this.frames[i], min)
+            max = Math.max(this.frames[i], max)
+        }
+        let mean = sum / this.frames.length
+
+        this.fps.textContent = `
+    Frames per Second:
+latest = ${Math.round(fps)}
+avg of last 100 = ${Math.round(mean)}
+min of last 100 = ${Math.round(min)}
+max of last 100 = ${Math.round(max)}`
+            .trim()
+    }
+}
+
+const renderLoop = () => {
+    fps.render()
+
+    const numOfTicks = parseInt(tickSlider.value, 10)
+    // console.log(`num of ticks: ${numOfTicks}`)
+    for (let i = 0; i < numOfTicks; i++) {
+        universe.tick()
+    }
+
+    drawBoard()
+
+    frameId = requestAnimationFrame(renderLoop)
+}
+
 
 drawBoard()
 play()

@@ -27,4 +27,10 @@ wasm-bindgen-test = "0.3.34"
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.
+# a more aggressive option could be `opt-level = "z"`
+# Sometimes, 's' options outputs a better result than the 'z' opt
+# ALWAYS mesure!!!
 opt-level = "s"
+# Give LLVM many more chances to inline and prune functions
+# -> faster at runtime but the compilation time could be long.
+lto = true
